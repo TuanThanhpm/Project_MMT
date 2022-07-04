@@ -84,7 +84,7 @@ class Server:
     def second_UI(self,username):
         option = self.receive_msg()
         if option == '1':
-            self.view_note(username)
+            self.view_list_note(username)
         elif option == '2':
             self.create_note(username)
             #self.first_UI()
@@ -105,11 +105,13 @@ class Server:
     def fourth_UI(self,_filename,username):
         option = self.receive_msg()
         if option == "1":
-            self.download(_filename)
+            self.view_note(_filename)
             #self.second_UI(username)
         elif option == '2':
+            self.download(_filename)
+            #self.second_UI(username)
+        elif option == '3':
             self.second_UI(username)
-
     def sign_up(self):
         username = self.receive_msg()
         password = self.receive_msg()
@@ -158,7 +160,7 @@ class Server:
             self.send_msg("True")
         return username
     
-    def view_note(self, username):
+    def view_list_note(self, username):
         filename = username + '.json'
         with open(filename, "r") as f:
             data = json.load(f)
@@ -208,9 +210,12 @@ class Server:
         }
         write_json(listObj, filename)
 
-    def view_image(self,_filename):
+    def view_note(self,_filename):
         self.send_file(_filename)
         print("Success!")
+
+    def view_image(self,_filename):
+        self.view_note(_filename)
 
     def download(self,_filename):
         self.send_file(_filename)

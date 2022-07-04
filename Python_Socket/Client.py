@@ -91,7 +91,7 @@ class Client:
         option = input("Choose option: ")
         self.send_msg(option)
         if option == "1":
-            self.view_note()
+            self.view_list_note()
         elif option == '2':
             self.create_note()
             #self.first_UI()
@@ -112,13 +112,16 @@ class Client:
             self.second_UI()
     
     def fourth_UI(self):
-        print("\n1. Download image\n2. Exit\n")
+        print("\n1. View note\n2. Download file\n2. Exit\n")
         option = input("Choose option: ")
         self.send_msg(option)
         if option == "1":
-            self.download()
+            self.view_note()
             #self.second_UI()
         elif option == '2':
+            self.download()
+            #self.second_UI()
+        elif option == '3':
             self.second_UI()
 
     def sign_up(self):  
@@ -149,7 +152,7 @@ class Client:
         else:
             print("Successfully logged in.")
     
-    def view_note(self):
+    def view_list_note(self):
         data = self.client.recv(1024).decode(FORMAT)
         data = json.loads(data)
         k = 1
@@ -190,16 +193,20 @@ class Client:
             return
         print("Success!")
     
-    def view_image(self):
+    def view_note(self):
         _filename =self.receive_file()
-        print("Success!")
 
-        img = Image.open(_filename)
+        """ img = Image.open(_filename)
         # Output Images
-        img.show()
+        img.show() """
+        cmd = _filename
+        subprocess.run(cmd, stdout=subprocess.PIPE, universal_newlines=True, shell=True)
 
         cmd = "del/Q " + _filename
         subprocess.run(cmd, stdout=subprocess.PIPE, universal_newlines=True, shell=True)
+    
+    def view_image(self):
+        self.view_note()
 
     def download(self):
         _filename = self.receive_file()

@@ -1,4 +1,3 @@
-
 import json
 def read_json(filename = "account.json"):
     with open(filename,'r') as file:

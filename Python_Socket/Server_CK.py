@@ -29,7 +29,7 @@ class Server:
         print("Server: " + msg)
         self.conn.sendall(bytes(msg, "utf8"))
 
-    def send_file(self,filename):
+    def send_file(self, filename):
         # get the file size
         filesize = os.path.getsize(filename)
         # send the filename and filesize
@@ -42,13 +42,11 @@ class Server:
                 if not bytes_read:
                     # file transmitting is done
                     break
-                # we use sendall to assure transimission in 
+                # we use sendall to assure transmission in
                 # busy networks
                 self.conn.sendall(bytes_read)
-            
+
     def receive_file(self):
-        # receive the file infos
-        # receive using client socket, not server socket
         received = self.conn.recv(BUFFER_SIZE).decode()
         filename, filesize = received.split(SEPARATOR)
         # remove absolute path if there is
@@ -56,18 +54,21 @@ class Server:
         _filename = "server_" + filename
         # convert to integer
         filesize = int(filesize)
+
+        current_size = 0
         # start receiving the file from the socket
         # and writing to the file stream
         with open(_filename, "wb") as f:
             while True:
                 # read 1024 bytes from the socket (receive)
                 bytes_read = self.conn.recv(BUFFER_SIZE)
-                if not bytes_read:    
-                    # nothing is received
-                    # file transmitting is done
-                    break
-                # write to the file the bytes we just received
+                current_size += len(bytes_read)
+                # write the bytes to the file
                 f.write(bytes_read)
+                # check if the file transmission is done
+                if current_size == filesize:
+                    # if done, break
+                    break
         return _filename
 
     def first_UI(self):
@@ -85,35 +86,44 @@ class Server:
         option = self.receive_msg()
         if option == '1':
             self.view_list_note(username)
+            self.second_UI(username)
         elif option == '2':
             self.create_note(username)
-            #self.first_UI()
+            self.second_UI(username)
         elif option == '3': 
             self.first_UI()
 
     def third_UI(self,_filename,username):
-        option = self.receive_msg()
-        if option == "1":
-            self.view_image(_filename)
-            #self.second_UI(username)
-        elif option == '2':
-            self.download(_filename)
-            #self.second_UI(username)
-        elif option == '3':
-            self.second_UI(username)
+       while True :
+            option = self.receive_msg()
+            if option == "1":
+                self.view_image(_filename)
+                #self.second_UI(username)
+            elif option == '2':
+                self.download(_filename)
+                #self.second_UI(username)
+            elif option == '3':
+                self.second_UI(username)
+                #self.view_list_note(username)
+                break
     
     def fourth_UI(self,_filename,username):
-        option = self.receive_msg()
-        if option == "1":
-            self.view_note(_filename)
-            #self.second_UI(username)
-        elif option == '2':
-            self.download(_filename)
-            #self.second_UI(username)
-        elif option == '3':
-            self.second_UI(username)
+        while True:
+            option = self.receive_msg()
+            print("ccccccc")
+            if option == "1":
+                self.view_note(_filename)
+                #self.second_UI(username)
+            elif option == '2':
+                self.download(_filename)
+                #self.second_UI(username)
+            elif option == '3':
+                self.second_UI(username)
+                break
+
     def sign_up(self):
         username = self.receive_msg()
+        self.conn.send("xxx".encode(FORMAT))
         password = self.receive_msg()
         #Read file
         list = read_json()
@@ -133,17 +143,24 @@ class Server:
             error +=1
         else:
             dict["pass"] = password 
+        #send result after checking
         if error == 1 or error == 2:
             self.send_msg("False")
             self.first_UI()
         else:
+            #store account into databases
             append_account(dict)
+            #initialize database which contains notes of user
+            filename = username + ".json"
+            init_file(filename)
             self.send_msg("True")
         return username
 
     def sign_in(self):
         username = self.receive_msg()
+        self.conn.send("xxx".encode(FORMAT))
         password = self.receive_msg()
+
         #Read file
         list = read_json()
         error = 0
@@ -162,19 +179,36 @@ class Server:
     
     def view_list_note(self, username):
         filename = username + '.json'
-        with open(filename, "r") as f:
-            data = json.load(f)
+        #Check the file exists or not
+        try:
+            with open(filename, "r") as f:
+                data = json.load(f)
+        except:
+            print("There are not data !")
+            return
+        #Send data in file 
         _data = json.dumps(data)
         self.conn.sendall(bytes(_data, "utf8"))
-        option = int(self.receive_msg())
+
+        #finish ping from client
+        msg = self.receive_msg()
+        if msg == "finish":
+            return 
+
+        #identify file in database
+        option = int(msg)
         k, _filename= 1,""
         for i in data['Note']:
             if k == option:
                 _filename = i["File name"]
                 break
             k+=1
+        #Get format of file
         format = _filename.split(".")
+        print("aaaaaa")
         self.send_msg(format[1])
+
+        print("bbbbb")
         if format[1] == "png" or format[1] == "jpg":
             self.third_UI(_filename, username)
         else:
@@ -182,9 +216,15 @@ class Server:
 
     def create_note(self, username):
         filename = username + '.json'
+        print(username)
         #receive data 
         id = self.receive_msg()
+        #finish ping 
+        if id == "finish":
+            return
+        self.send_msg("xxx")
         option = self.receive_msg()
+        self.send_msg("xxxx")
         _file = self.receive_msg()
         #check 
         type = check_type(option)
@@ -196,13 +236,16 @@ class Server:
             self.send_msg("True")
         #receive file
         try:
+            print("AAAAAAAAA")
             file = self.receive_file()
+            print("receive success")
         except:
             print("File not found")
             return
+
         print("Success!")
         #Store a note
-        init_file(filename)
+        #init_file(filename)
         listObj = {
             "Id": id,
             "Type": type,
@@ -222,8 +265,12 @@ class Server:
         print("Success!")
 
     def main(self):
+        #while True:
         self.first_UI()
         self.server.close()
 
 S = Server()
+
+
+
 S.main()

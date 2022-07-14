@@ -16,39 +16,24 @@
             "File name": "server_love.txt"
         },
         {
-            "Id": "12321312321",
+            "Id": "axxxxx",
+            "Type": "Text",
+            "File name": "server_love.txt"
+        },
+        {
+            "Id": "1111111",
+            "Type": "Text",
+            "File name": "server_ngungoc.txt"
+        },
+        {
+            "Id": "dddddz",
             "Type": "Images",
             "File name": "server_gaixinh.jpg"
         },
         {
-            "Id": "sdasdasdassd",
+            "Id": "11111",
             "Type": "Text",
             "File name": "server_love.txt"
-        },
-        {
-            "Id": "dsadasdasd",
-            "Type": "Text",
-            "File name": "server_love.txt"
-        },
-        {
-            "Id": "3132312321",
-            "Type": "Text",
-            "File name": "server_love.txt"
-        },
-        {
-            "Id": "dadsadasdas",
-            "Type": "Images",
-            "File name": "server_gaixinh.jpg"
-        },
-        {
-            "Id": "sdasdsad",
-            "Type": "Text",
-            "File name": "server_love.txt"
-        },
-        {
-            "Id": "sadasdasdasd",
-            "Type": "Files",
-            "File name": "server_account.json"
         }
     ]
 }

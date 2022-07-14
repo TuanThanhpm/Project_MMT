@@ -15,8 +15,9 @@ BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
 
 class Client:
+    #initialize socket connection
     def __init__(self):
-        HOST = '127.0.0.1'  # The server's hostname or IP address
+        HOST = '10.123.0.130'  # The server's hostname or IP address
         PORT = 65432        # The port used by the server
         # Create a TCP/IP socket
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -24,14 +25,17 @@ class Client:
         print('connecting to %s port ' + str(server_address))
         self.client.connect(server_address)
 
+    #receive message from server
     def receive_msg(self):
         data = self.client.recv(1024).decode(FORMAT)
         print("Server: " + data)
         return data
 
+    #send message to server
     def send_msg(self, msg):
         self.client.send(bytes(msg, "utf8"))
 
+    #send file to server
     def send_file(self, filename):
         # get the file size
         filesize = os.path.getsize(filename)
@@ -49,7 +53,7 @@ class Client:
                 # busy networks
                 self.client.sendall(bytes_read)
 
-
+    #receive file to server
     def receive_file(self):
         # receive the file infos
         # receive using client socket, not server socket
@@ -78,28 +82,29 @@ class Client:
         return _filename
 
     def sign_up(self,_name,_pass):
-        #send info
+        #send information
         self.send_msg(_name)
-        x = self.receive_msg()
+        self.receive_msg()
         self.send_msg(_pass)
         #receive msg from Server
         check = self.receive_msg()
+        #info message after checking
         if check == "False":
-            messagebox.showinfo("showinfo", "Account is exist or size is smaller than required size.")
-           # self.first_UI()
+            messagebox.showinfo("Error!", "Account is exist or size is smaller than required size.")
         else:
-            messagebox.showinfo("showinfo","Successfully registered.")
+            messagebox.showinfo("Success!","Successfully registered.")
         return check
 
     def sign_in(self, _name, _pass):
+        #send information
         self.send_msg(_name)
         x = self.receive_msg()
         self.send_msg(_pass)
         #receive msg from Server
         check = self.receive_msg()
+        #info message after checking
         if check == "False":
            messagebox.showinfo("Error!", "Username or password is wrong.")
-          #  self.first_UI()
         else:
             messagebox.showinfo("Success!","Successfully logged in.")
         return check
@@ -119,15 +124,9 @@ class Client:
         viewListNote.geometry("700x500")
         frame = tkinter.Frame(viewListNote)
 
-        #Check the file exists or not
-        try:
-            data = self.client.recv(1024).decode(FORMAT)
-            data = json.loads(data)
-        except:
-            #viewListNote.destroy()
-            messagebox.showinfo("Error!", "There are not data !")
-            #self.main()
-            return
+        #Receive data from server
+        data = self.client.recv(1024).decode(FORMAT)
+        data = json.loads(data)
 
         #Print data received from server 
         k = 1
@@ -139,7 +138,8 @@ class Client:
             print(k,":", i)
             k += 1
         txt.grid()
-
+       
+        #create text box to user inputs option
         note = Label (frame, text ="Choose a note which you want to open:  ")
         note.grid()
         entryX = Entry(frame, width=20,bd=5)
@@ -155,9 +155,11 @@ class Client:
         thirdFrame.grid_rowconfigure(0, weight=1)
         thirdFrame.columnconfigure(0, weight=1)
         thirdFrame.grid(row=0, column=0, sticky="nsew")
+        #label of third UI
         third_label = Label(thirdFrame, text="THIRD UI", font=("ROBOTO", 16), bd=5)
         third_label.grid()
 
+        #Back to second UI
         def return2_click():
             option = "3"
             self.send_msg(option)
@@ -167,14 +169,14 @@ class Client:
             option = "1"
             self.send_msg(option)
             self.view_image()
-            #frame.tkraise()
 
         def download_click():
             option = "2"
             self.send_msg(option)
             self.download()
-            #frame.tkraise()
+            messagebox.showinfo("showinfo","Success!")
 
+        #create function buttons 
         viewImage_button = Button(thirdFrame, width=20, height=2, text="View Image", bd=5, command=viewImage_click)
         viewImage_button.grid()
         downloadImage_button = Button(thirdFrame, width=20, height=2, text="Download Image", bd=5, command=download_click)
@@ -182,10 +184,12 @@ class Client:
         return2_button = Button(thirdFrame, width=20, height=2, text="Back", bd=5, command=return2_click)
         return2_button.grid()
 
+        ###### FOURTH UI ######
         fourthFrame = tkinter.Frame(viewListNote)
         fourthFrame.grid_rowconfigure(0, weight=1)
         fourthFrame.columnconfigure(0, weight=1)
         fourthFrame.grid(row=0, column=0, sticky="nsew")
+        #create label for fourth UI
         fourth_label = Label(fourthFrame, text="FOURTH UI", font=("ROBOTO", 16), bd=5)
         fourth_label.grid()
 
@@ -193,20 +197,19 @@ class Client:
             option = "1"
             self.send_msg(option)
             self.view_note()
-            #frame.tkraise()
 
         def downloadNote_click():
             option = "2"
             self.send_msg(option)
             self.download()
-            #frame.tkraise()
+            messagebox.showinfo("showinfo","Success!")
 
         def return3_click():
             option = "3"
             self.send_msg(option)
             viewListNote.destroy()
-            #frame.tkraise()
 
+        #create function buttons
         viewNote_button = Button(fourthFrame, width=20, height=2, text="View Note", bd=5, command=viewNote_click)
         viewNote_button.grid()
         downloadFile_button = Button(fourthFrame, width=20, height=2, text="Download file", bd=5, command=downloadNote_click)
@@ -215,10 +218,12 @@ class Client:
         return3_button.grid()
         frame.tkraise()
 
+        #Enter button of view list note
         def click():
             option = entryX.get()
             self.send_msg(option)
             format = self.receive_msg()
+            #program will determine format of file to execute 
             if format == "png" or format == "jpg":
                 thirdFrame.tkraise()
             else:
@@ -237,6 +242,7 @@ class Client:
             createNote.destroy()
         createNote.protocol("WM_DELETE_WINDOW", close_window)
 
+        #create text box for user input
         createNote.title("Create Note")
         inputId_label = Label(createNote,text=" Input ID:")
         inputId_label.grid()
@@ -251,10 +257,35 @@ class Client:
         inputFile_entry = Entry(createNote, width=20, bd=5)
         inputFile_entry.grid()
 
+        #check file is correct or not
+        def check_file(type, filename):
+            format = filename.split(".")
+            #check file is existing or not
+            try:
+                with open(filename, "r") as f:
+                    print("check")
+            except:
+                return False
+            #check format file is correct or not, which follows type
+            print(format)
+            #text: txt
+            if type == "1" and  format[1] == "txt" :
+                return True
+            #image: png, jpg
+            elif type == "2" and (format[1] == "jpg" or format[1] == "png"):
+                return True
+            #file: all
+            elif type == "3":
+                return True
+            return False
+
         def create_click():
+            #get data from user inputs
             id = inputId_entry.get()
             type = inputType_entry.get()
             file=inputFile_entry.get()
+
+            #send data to server
             self.send_msg(id)
             print(id)
             self.receive_msg()
@@ -263,40 +294,48 @@ class Client:
             print(type)
             self.send_msg(file)
             print(file)
-            check = self.receive_msg()
-            if check == "False":
-                messagebox.showinfo("showinfo","ID has been used or wrong input.")
-            else:
-                messagebox.showinfo("showinfo", "Success!")
 
-            try:
+            #check data input is correct or not 
+            check = self.receive_msg()
+            is_valid = check_file(type,file)
+            if check == "False" or is_valid == False:
+                messagebox.showinfo("Error","ID has been used or wrong input or file is not founded.")
+                #send error ping to server
+                self.send_msg("error")
+                self.receive_msg()
+                #close window
+                createNote.destroy()
+            else:
+                messagebox.showinfo("Success!", "Success!")
+                self.send_msg("success")
+                self.receive_msg()
+                print("-----")
                 self.send_file(file)
                 createNote.destroy()
                 print("send success")
-            except:
-                print("send fail")
-                messagebox.showinfo("showinfo", "File {} not found".format(file))
-                return
-
+            
         enter_button = Button(createNote, height=2,width=20,text="Enter",bd=5,command=create_click)
         enter_button.grid()
 
     def view_note(self):
         _filename =self.receive_file()
 
+        #open file 
         cmd = _filename
         subprocess.run(cmd, stdout=subprocess.PIPE, universal_newlines=True, shell=True)
 
+        #delete file
         cmd = "del/Q " + _filename
         subprocess.run(cmd, stdout=subprocess.PIPE, universal_newlines=True, shell=True)
 
     def view_image(self):
         _filename =self.receive_file()
 
+        #open file image
         img = Image.open(_filename)
         # Output Images
         img.show()
-
+        #delete image
         cmd = "del/Q " + _filename
         subprocess.run(cmd, stdout=subprocess.PIPE, universal_newlines=True, shell=True)
 
@@ -309,6 +348,7 @@ class Client:
         window = Tk()
         window.geometry("500x200")
         window.title("Client")
+        #create menubar includes one function: exit program
         menubar= Menu(window)
         window.config(menu=menubar)
         file_menu= Menu(menubar)

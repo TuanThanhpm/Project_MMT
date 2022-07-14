@@ -1,39 +1,45 @@
 import socket
 import json
 import os
-from tkinter import *
-from tkinter import messagebox
 from Func import *
+import threading
 
 FORMAT = "utf8"
 BUFFER_SIZE = 4096
 SEPARATOR = "<SEPARATOR>"
 
 class Server:
+    #initialize socket connection
     def __init__(self):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
-        PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
+        HOST = '10.123.0.130'  # Standard loopback interface address (localhost)
+        PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
         self.server.bind((HOST, PORT))
         self.server.listen()
         print(f"[*] Listening as {HOST}:{PORT}")
-        self.conn, addr = self.server.accept()
-        print("Client ", addr, "Connected")
 
-    def receive_msg(self):
-        data = self.conn.recv(1024).decode(FORMAT)
+
+S = Server()
+
+#multithreading client socket
+def handle(conn, addr):
+    #receive message from client
+    def receive_msg():
+        data = conn.recv(1024).decode(FORMAT)
         print("Client: " + data)
         return data
 
-    def send_msg(self, msg):
+    #send message to client
+    def send_msg(msg):
         print("Server: " + msg)
-        self.conn.sendall(bytes(msg, "utf8"))
+        conn.sendall(bytes(msg, "utf8"))
 
-    def send_file(self, filename):
+    #send file to client
+    def send_file(filename):
         # get the file size
         filesize = os.path.getsize(filename)
         # send the filename and filesize
-        self.conn.send(f"{filename}{SEPARATOR}{filesize}".encode())
+        conn.send(f"{filename}{SEPARATOR}{filesize}".encode())
         # start sending the file
         with open(filename, "rb") as f:
             while True:
@@ -44,10 +50,11 @@ class Server:
                     break
                 # we use sendall to assure transmission in
                 # busy networks
-                self.conn.sendall(bytes_read)
+                conn.sendall(bytes_read)
 
-    def receive_file(self):
-        received = self.conn.recv(BUFFER_SIZE).decode()
+    #receive file from client
+    def receive_file():
+        received = conn.recv(BUFFER_SIZE).decode()
         filename, filesize = received.split(SEPARATOR)
         # remove absolute path if there is
         filename = os.path.basename(filename)
@@ -61,7 +68,7 @@ class Server:
         with open(_filename, "wb") as f:
             while True:
                 # read 1024 bytes from the socket (receive)
-                bytes_read = self.conn.recv(BUFFER_SIZE)
+                bytes_read = conn.recv(BUFFER_SIZE)
                 current_size += len(bytes_read)
                 # write the bytes to the file
                 f.write(bytes_read)
@@ -71,181 +78,187 @@ class Server:
                     break
         return _filename
 
-    def first_UI(self):
-        option = self.receive_msg()
+    #first UI: sign up, sign in
+    def first_UI():
+        #receive option of user inputs
+        option = receive_msg()
         if option == '1':
-            username = self.sign_up()
-            self.second_UI(username)
+            username = sign_up()
+            second_UI(username)
         elif option == '2':
-            username = self.sign_in()
-            self.second_UI(username)
-        elif option == '3': 
+            username = sign_in()
+            second_UI(username)
+        elif option == '3':
             print("Closing socket")
 
-    def second_UI(self,username):
-        option = self.receive_msg()
+    #second UI: view list note, create note, back
+    def second_UI(username):
+        #receive option of user inputs
+        option = receive_msg()
         if option == '1':
-            self.view_list_note(username)
-            self.second_UI(username)
+            view_list_note(username)
+            second_UI(username)
         elif option == '2':
-            self.create_note(username)
-            self.second_UI(username)
-        elif option == '3': 
-            self.first_UI()
+            create_note(username)
+            second_UI(username)
+        elif option == '3':
+            first_UI()
 
-    def third_UI(self,_filename,username):
-       while True :
-            option = self.receive_msg()
+    #third UI: view image, download, back
+    def third_UI(_filename, username):
+        while True:
+            #receive option of user inputs
+            option = receive_msg()
             if option == "1":
-                self.view_image(_filename)
-                #self.second_UI(username)
+                view_image(_filename)
             elif option == '2':
-                self.download(_filename)
-                #self.second_UI(username)
+                download(_filename)
             elif option == '3':
-                self.second_UI(username)
-                #self.view_list_note(username)
+                second_UI(username)
                 break
     
-    def fourth_UI(self,_filename,username):
+    #fourth UI: view note, download, back
+    def fourth_UI(_filename, username):
         while True:
-            option = self.receive_msg()
-            print("ccccccc")
+            #receive option of user inputs
+            option = receive_msg()
             if option == "1":
-                self.view_note(_filename)
-                #self.second_UI(username)
+                view_note(_filename)
             elif option == '2':
-                self.download(_filename)
-                #self.second_UI(username)
+                download(_filename)
             elif option == '3':
-                self.second_UI(username)
+                second_UI(username)
                 break
 
-    def sign_up(self):
-        username = self.receive_msg()
-        self.conn.send("xxx".encode(FORMAT))
-        password = self.receive_msg()
-        #Read file
+    def sign_up():
+        #receiver info of account
+        username = receive_msg()
+        send_msg("-------")
+        password = receive_msg()
+        # Read file
         list = read_json()
-        #store info
-        dict={
-            "user":"",
-            "pass":""
+        # store info
+        dict = {
+            "user": "",
+            "pass": ""
         }
         error = 0
-        #check username
-        if check_user(list,username) == False:
-            error +=1
+        # check username
+        if check_user(list, username) == False:
+            error += 1
         else:
             dict["user"] = username
-        #check password
+        # check password
         if check_pass(password) == False:
-            error +=1
+            error += 1
         else:
-            dict["pass"] = password 
-        #send result after checking
+            dict["pass"] = password
+        
+        # send result after checking
         if error == 1 or error == 2:
-            self.send_msg("False")
-            self.first_UI()
+            send_msg("False")
+            first_UI()
         else:
-            #store account into databases
+            # store account into databases
             append_account(dict)
-            #initialize database which contains notes of user
+            # initialize database which contains notes of user
             filename = username + ".json"
             init_file(filename)
-            self.send_msg("True")
+            send_msg("True")
         return username
 
-    def sign_in(self):
-        username = self.receive_msg()
-        self.conn.send("xxx".encode(FORMAT))
-        password = self.receive_msg()
+    def sign_in():
+        #receive info of account from client
+        username = receive_msg()
+        conn.send("-------".encode(FORMAT))
+        password = receive_msg()
 
-        #Read file
+        # Read file
         list = read_json()
         error = 0
-        #check username
-        if check_user_1(list,username) == False:
-            error +=1
-        #check password
-        if check_pass_1(list,password) == False:
-            error +=1
+
+        # check username
+        if check_user_1(list, username) == False:
+            error += 1
+        # check password
+        if check_pass_1(list, password) == False:
+            error += 1
+
+        #send result after checking 
         if error == 1 or error == 2:
-            self.send_msg("False")
-            self.first_UI()
+            send_msg("False")
+            first_UI()
         else:
-            self.send_msg("True")
+            send_msg("True")
         return username
-    
-    def view_list_note(self, username):
+
+    def view_list_note(username):
         filename = username + '.json'
-        #Check the file exists or not
-        try:
-            with open(filename, "r") as f:
-                data = json.load(f)
-        except:
-            print("There are not data !")
-            return
-        #Send data in file 
+        # Store data from file
+        with open(filename, "r") as f:
+            data = json.load(f)
+
+        # Send data in file
         _data = json.dumps(data)
-        self.conn.sendall(bytes(_data, "utf8"))
+        conn.sendall(bytes(_data, "utf8"))
 
-        #finish ping from client
-        msg = self.receive_msg()
+        # finish ping from client
+        msg = receive_msg()
         if msg == "finish":
-            return 
+            return
 
-        #identify file in database
+        # identify file in database
         option = int(msg)
-        k, _filename= 1,""
+        k, _filename = 1, ""
         for i in data['Note']:
             if k == option:
                 _filename = i["File name"]
                 break
-            k+=1
-        #Get format of file
+            k += 1
+        # Get format of file
         format = _filename.split(".")
-        print("aaaaaa")
-        self.send_msg(format[1])
-
-        print("bbbbb")
+        print("--------")
+        send_msg(format[1])   
         if format[1] == "png" or format[1] == "jpg":
-            self.third_UI(_filename, username)
+            third_UI(_filename, username)
         else:
-            self.fourth_UI(_filename, username)
+            fourth_UI(_filename, username)
 
-    def create_note(self, username):
+    def create_note(username):
         filename = username + '.json'
-        print(username)
-        #receive data 
-        id = self.receive_msg()
-        #finish ping 
+        # receive data
+        id = receive_msg()
+        # finish ping from client
         if id == "finish":
             return
-        self.send_msg("xxx")
-        option = self.receive_msg()
-        self.send_msg("xxxx")
-        _file = self.receive_msg()
-        #check 
+
+        send_msg("---------")
+        option = receive_msg()
+        send_msg("---------")
+        _file = receive_msg()
+        # check id and type are correct or not
         type = check_type(option)
-        print(type)
-        if check_id(filename,id) == False or type == "":
-            self.send_msg("False")
-            self.create_note(username)
+        if check_id(filename, id) == False or type == "":
+            send_msg("False")
         else:
-            self.send_msg("True")
-        #receive file
+            send_msg("True")
+
+        # error ping from client
+        msg = receive_msg()
+        send_msg("---------")
+        if msg == "error":
+            return
+
+        # receive file
         try:
-            print("AAAAAAAAA")
-            file = self.receive_file()
+            print("-------")
+            file = receive_file()
             print("receive success")
-        except:
+        except: #program occurs error in receiving file
             print("File not found")
             return
 
-        print("Success!")
-        #Store a note
-        #init_file(filename)
+        # Store a note
         listObj = {
             "Id": id,
             "Type": type,
@@ -253,24 +266,36 @@ class Server:
         }
         write_json(listObj, filename)
 
-    def view_note(self,_filename):
-        self.send_file(_filename)
+    def view_note(_filename):
+        send_file(_filename)
         print("Success!")
 
-    def view_image(self,_filename):
-        self.view_note(_filename)
+    def view_image(_filename):
+        view_note(_filename)
 
-    def download(self,_filename):
-        self.send_file(_filename)
+    def download(_filename):
+        send_file(_filename)
         print("Success!")
 
-    def main(self):
-        #while True:
-        self.first_UI()
-        self.server.close()
+    def main():
+        first_UI()
+        print(addr,"FINISH")
 
-S = Server()
+    main()
 
+n = 0
+#at most 3 clients connected to server
+while (n<3):
+    try:
+        conn , addr = S.server.accept()
+        #print ip of client
+        print("connect ", addr)
+        #multithreading
+        thr = threading.Thread(target=handle,args=(conn,addr))
+        thr.daemon = False
+        thr.start()
+    except:
+        print("ERROR")
+    n+=1
 
-
-S.main()
+S.server.close()
